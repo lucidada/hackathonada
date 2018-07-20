@@ -31,6 +31,12 @@ window.addEventListener('load', () => {
     if (e.key === "Enter" && nodoc) {
       document.querySelector("#csv-input").click();
     }
+    else if (e.key === "_") {
+      decreaseRate();
+    }
+    else if (e.key === "+") {
+      increaseRate();
+    }
   });
 
   function parseDocumentCsv(csvData) {

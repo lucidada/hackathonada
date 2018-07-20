@@ -8,9 +8,14 @@ function createContext(summary, sequence) {
   }
 }
 function getExploreItem(context) {
+  console.log(context)
+  return getTransitionItem(context).context;
+}
+function getTransitionItem(context) {
   return context.sequence[context.index];
 }
 function summarize(item) {
+  console.log("hey", item)
   readSpeech(item.summary);
 }
 function setActiveContext(context) {
@@ -20,7 +25,6 @@ function setActiveContext(context) {
   }
   else {
     const newContext = getExploreItem(context);
-    console.log(context, newContext)
     newContext.index = 0;
     newContext.sequence = newContext.children;
     readSpeech(`${newContext.Name}: ${newContext.summary}`);
@@ -28,30 +32,42 @@ function setActiveContext(context) {
   }
 }
 function right(context) {
-  context.index = (context.index + 1 + context.sequence.length) % context.sequence.length;
-  summarize(getExploreItem(context));
+  if (context.sequence.length == 0) {
+    readSpeech("No structures. Try a different direction");
+  }
+  else {
+    context.index = (context.index + 1 + context.sequence.length) % context.sequence.length;
+    summarize(getTransitionItem(context));
+  }
 }
 function left(context) {
-  context.index = (context.index - 1 + context.sequence.length) % context.sequence.length;
-  summarize(getExploreItem(context));
+  if (context.sequence.length == 0) {
+    readSpeech("No structures. Try a different direction");
+  }
+  else {
+    context.index = (context.index - 1 + context.sequence.length) % context.sequence.length;
+    summarize(getTransitionItem(context));
+  }
 }
 function up(context) {
   if (!context.parents || context.parents.length === 0) {
-    readSpeech("There are no structures above this one.");
+    readSpeech("There are no structures above.");
   }
   else {
     context.sequence = context.parents;
+    context.index = 0;
     const s = context.sequence.length;
-    readSpeech(`${s} above`)
+    readSpeech(`There ${pluralize(s, "is", "are")} ${s} ${pluralize(s, "structure", "structures")} above`)
   }
 }
 function down(context) {
   if (!context.children || context.children.length === 0) {
-    readSpeech("There are no structures below this one.");
+    readSpeech("There are no structures below.");
   }
   else {
     context.sequence = context.children;
+    context.index = 0;
     const s = context.sequence.length;
-    readSpeech(`${s} below`)
+    readSpeech(`There ${pluralize(s, "is", "are")} ${s} ${pluralize(s, "structure", "structures")} below`)
   }
 }
