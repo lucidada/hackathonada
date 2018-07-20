@@ -1,82 +1,87 @@
 function initiateDocumentScreenReader(documentName, documentData) {
+  const objects = documentData.objects
   const pages = documentData.pages;
   const shapes = documentData.shapes;
   const lines = documentData.lines;
   readSpeech(`
     ${documentName} Diagram is loaded.
-    There ${pluralize(pages.length, "is", "are")} ${pages.length} ${pluralize(pages.length, "page", "pages")}.
-    Use w. a. s. d. to navigate the diagram.
+    Use w. a. s. d. and spacebar. to navigate the diagram.
   `)
-    // There ${pluralize(shapes.length, "is", "are")} ${shapes.length} ${pluralize(shapes.length, "shape", "shapes")}
-    // There ${pluralize(lines.length, "is", "are")} ${lines.length} ${pluralize(lines.length, "line", "lines")}
 
-  let context = {
-    index: 0,
-    exploreIndex: -1,
-    sequence: [
-      {summary: "Option 1 to Proccess"},
-      {summary: "Option 2 to Proccess"},
-      {summary: "Option 3 to Proccess"},
-      {summary: "Option 4 to Proccess"},
-      {summary: "Option 5 to Proccess"}
-    ]
-  }
+  const globalContext = createContext(`
+    Diagram Overview.
+    There ${pluralize(pages.length, "is", "are")} ${pages.length} ${pluralize(pages.length, "page", "pages")}.
+  `, pages);
+  let context = globalContext;
 
   window.addEventListener("keypress", e => {
     const k = e.key;
     if (keyPressHandlers[k] !== undefined) {
       keyPressHandlers[k]();
     }
-    console.log(e)
   });
 
-  function getExploreItem() {
-    return context.sequence[context.exploreIndex];
-  }
-  function summarize(item) {
-    readSpeech(item.summary);
-  }
-
-  function right(context) {
-    context.exploreIndex = (context.exploreIndex + 1 + context.sequence.length) % context.sequence.length;
-    summarize(getExploreItem());
-  }
-  function left(context) {
-    context.exploreIndex = (context.exploreIndex - 1 + context.sequence.length) % context.sequence.length;
-    summarize(getExploreItem());
-  }
+  const hierarchy = introduceHierarchy(objects, pages, shapes, lines);
 
   const keyPressHandlers = {
-    "w": _ => readSpeech("up"),
-    "s": _ => readSpeech("down"),
+    "w": _ => up(context),
+    "s": _ => down(context),
     "a": _ => left(context),
     "d": _ => right(context),
+    " ": _ => context = setActiveContext(context),
     "_": _ => decreaseRate(),
     "+": _ => increaseRate(),
   };
-}
 
-const speechSettings = {
-  rate: 1
-};
-function increaseRate() {
-  speechSettings.rate += 0.2;
-  speechSettings.rate = speechSettings.rate > 10 ? 10 : speechSettings.rate;
-  readSpeech("Increase rate")
-}
-function decreaseRate() {
-  speechSettings.rate -= 0.2;
-  speechSettings.rate = speechSettings.rate < 0 ? 0.1 : speechSettings.rate;
-  readSpeech("Decrease rate")
-}
+  function introduceHierarchy(objects, pages, shapes, lines) {
+    const hierarchy = objects.map(o => {
+      o.parents = [];
+      o.children = [];
+      return o;
+    });
 
-function readSpeech(message) {
-  const msg = new SpeechSynthesisUtterance(message);
-  msg.rate = speechSettings.rate;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(msg);
-}
+    // name pages
+    pages.forEach(p => {
+      p.parents.push(globalContext);
+      p.summary = mergeTextAreas(p);
+    });
 
-function pluralize(count, singular, plural) {
-  return count === 1 ? singular : plural;
+    // connect shapes to pages
+    shapes.forEach(s => {
+      const page = hierarchy[s["Page ID"] - 1];
+      const shape = hierarchy[s["Id"] - 1];
+      shape.summary = mergeTextAreas(shape);
+      page.children.push(shape);
+      shape.parents.push(page);
+    });
+
+    console.log("lnes", lines)
+
+    // connect shapes to eachother
+    lines.forEach(l => {
+      if (!l["Line Source"] && !l["Line Destination"]) {
+        return;
+      }
+      // #TODO add text line between shapes
+      const lineSource = hierarchy[l["Line Source"] - 1];
+      const lineDest = hierarchy[l["Line Destination"] - 1];
+      lineSource.children.push(lineDest);
+      lineDest.parents.push(lineSource);
+    });
+
+    hierarchy.forEach(h => {
+      console.log(h);
+    });
+
+    return hierarchy;
+  }
+
+  function mergeTextAreas(obj) {
+    let i = 1;
+    let text = obj[`Text Area ${i++}`];
+    while (obj[`Text Area ${i}`]) {
+      text += ". " + obj[`Text Area ${i++}`]
+    }
+    return text;
+  }
 }

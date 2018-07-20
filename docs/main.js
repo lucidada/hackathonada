@@ -37,9 +37,10 @@ window.addEventListener('load', () => {
     const arrays = csvToArrays(csvData);
     const objects = arraysToObjects(arrays);
     const pages = objects.filter(propertyEquals("Name", "Page"));
-    const shapes = objects.filter(propertyIsNotIn("Name", ["Page", "Line"]));
+    const shapes = objects.filter(propertyIsNotIn("Name", ["Page", "Line", "", undefined]));
     const lines = objects.filter(propertyEquals("Name", "Line"));
     return {
+      objects,
       pages,
       shapes,
       lines
